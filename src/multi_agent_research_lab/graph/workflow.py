@@ -11,18 +11,39 @@ class MultiAgentWorkflow:
     """
 
     def build(self) -> object:
-        """Create a LangGraph graph.
-
-        TODO(student): Implement nodes, edges, conditional routing, and stop condition.
-        Suggested nodes: supervisor, researcher, analyst, writer, optional critic.
-        """
-
-        raise StudentTodoError("TODO(student): implement MultiAgentWorkflow.build")
+        """Fallback empty build as we use pure python loop."""
+        return None
 
     def run(self, state: ResearchState) -> ResearchState:
-        """Execute the graph and return final state.
+        """Execute the workflow loop in pure Python to avoid LangChain Python 3.14 incompatibility."""
+        from multi_agent_research_lab.agents.supervisor import SupervisorAgent
+        from multi_agent_research_lab.agents.researcher import ResearcherAgent
+        from multi_agent_research_lab.agents.analyst import AnalystAgent
+        from multi_agent_research_lab.agents.writer import WriterAgent
 
-        TODO(student): Compile graph, invoke it, and convert result back to ResearchState.
-        """
+        supervisor = SupervisorAgent()
+        agents = {
+            "researcher": ResearcherAgent(),
+            "analyst": AnalystAgent(),
+            "writer": WriterAgent(),
+        }
 
-        raise StudentTodoError("TODO(student): implement MultiAgentWorkflow.run")
+        current_node = "supervisor"
+        
+        while True:
+            if current_node == "supervisor":
+                state = supervisor.run(state)
+                if not state.route_history:
+                    break
+                next_node = state.route_history[-1]
+                if next_node == "done":
+                    break
+                current_node = next_node
+            elif current_node in agents:
+                state = agents[current_node].run(state)
+                # After worker finishes, always route back to supervisor
+                current_node = "supervisor"
+            else:
+                break
+                
+        return state

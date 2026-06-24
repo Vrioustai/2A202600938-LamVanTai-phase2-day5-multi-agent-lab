@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Research Lab Demo</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        
+        :root {
+            --bg-color: #0b0f19;
+            --glass-bg: rgba(20, 25, 40, 0.6);
+            --glass-border: rgba(255, 255, 255, 0.05);
+            --accent-glow: 0 0 20px rgba(99, 102, 241, 0.5);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --primary: #6366f1;
+            --success: #10b981;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top right, #1e1b4b, var(--bg-color)),
+                        radial-gradient(circle at bottom left, #0f172a, var(--bg-color));
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1000px;
+            margin-top: 50px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin: 0;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            margin-top: 10px;
+        }
+
+        .search-box {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            gap: 15px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        input {
+            flex: 1;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: white;
+            padding: 15px;
+            font-size: 1rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
+        }
+
+        button {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--accent-glow);
+        }
+
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .flow-container {
+            display: none;
+            margin-top: 40px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .flow-container.visible {
+            display: flex;
+            opacity: 1;
+        }
+
+        .agent-node {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 15px 25px;
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .agent-node.active {
+            color: white;
+            border-color: var(--primary);
+            box-shadow: var(--accent-glow);
+            transform: scale(1.05);
+        }
+
+        .agent-node.done {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .results-container {
+            margin-top: 40px;
+            display: grid;
+            gap: 20px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            margin-bottom: 50px;
+        }
+        
+        .results-container.visible {
+            opacity: 1;
+        }
+
+        .card {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            animation: slideUp 0.5s ease backwards;
+        }
+
+        .card-header {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #818cf8;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-content {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .final-answer {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .final-answer .card-header {
+            color: #c084fc;
+        }
+        
+        .final-answer .card-content {
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        .stats {
+            margin-top: 15px;
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+            color: var(--success);
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 15px;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        #btn-text { display: inline-block; vertical-align: middle; }
+        .hidden { display: none !important; }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Multi-Agent Research Lab</h1>
+            <div class="subtitle">AI-Powered Research using FastAPI & Multi-Agent Pattern</div>
+        </header>
+
+        <div class="search-box">
+            <input type="text" id="query-input" placeholder="Nhập chủ đề bạn muốn nghiên cứu... (VD: AI Agent trends 2026)" value="AI Agent trends 2026">
+            <button id="search-btn">
+                <span id="spinner" class="spinner hidden"></span>
+                <span id="btn-text">Research</span>
+            </button>
+        </div>
+
+        <div class="flow-container" id="flow-container">
+            <div class="agent-node" id="node-supervisor">Supervisor</div>
+            <div class="agent-node" id="node-researcher">Researcher</div>
+            <div class="agent-node" id="node-analyst">Analyst</div>
+            <div class="agent-node" id="node-writer">Writer</div>
+        </div>
+
+        <div class="results-container" id="results-container">
+            <!-- Results will be injected here -->
+        </div>
+    </div>
+
+    <script>
+        const searchBtn = document.getElementById('search-btn');
+        const queryInput = document.getElementById('query-input');
+        const flowContainer = document.getElementById('flow-container');
+        const resultsContainer = document.getElementById('results-container');
+        const nodes = {
+            supervisor: document.getElementById('node-supervisor'),
+            researcher: document.getElementById('node-researcher'),
+            analyst: document.getElementById('node-analyst'),
+            writer: document.getElementById('node-writer')
+        };
+        const spinner = document.getElementById('spinner');
+        const btnText = document.getElementById('btn-text');
+
+        function resetUI() {
+            resultsContainer.innerHTML = '';
+            resultsContainer.classList.remove('visible');
+            flowContainer.classList.add('visible');
+            Object.values(nodes).forEach(node => {
+                node.className = 'agent-node';
+            });
+        }
+
+        async function simulateAgentFlow() {
+            // Sáng đèn chạy lướt qua các agent cho lớp xem
+            const sequence = ['supervisor', 'researcher', 'supervisor', 'analyst', 'supervisor', 'writer', 'supervisor'];
+            for(let i=0; i<sequence.length; i++){
+                const agent = sequence[i];
+                Object.values(nodes).forEach(n => n.classList.remove('active'));
+                nodes[agent].classList.add('active');
+                await new Promise(r => setTimeout(r, 600)); // fake delay cho animation
+                nodes[agent].classList.add('done');
+            }
+            Object.values(nodes).forEach(n => {
+                n.classList.remove('active');
+                n.classList.add('done');
+            });
+        }
+
+        searchBtn.addEventListener('click', async () => {
+            const query = queryInput.value.trim();
+            if(!query) return;
+
+            // UI Loading State
+            searchBtn.disabled = true;
+            spinner.classList.remove('hidden');
+            btnText.textContent = "Processing...";
+            resetUI();
+
+            try {
+                // Animation chạy song song lúc đợi request
+                let flowPromise = simulateAgentFlow();
+
+                // Gọi API backend
+                const response = await fetch('/api/research', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ query: query })
+                });
+
+                const data = await response.json();
+                await flowPromise; // Đợi animation chạy xong 
+
+                if(response.ok) {
+                    renderResults(data);
+                } else {
+                    renderError(data.detail || "Có lỗi xảy ra");
+                }
+                
+            } catch (error) {
+                renderError("Không thể kết nối đến server. Đảm bảo Backend đang chạy.");
+            } finally {
+                searchBtn.disabled = false;
+                spinner.classList.add('hidden');
+                btnText.textContent = "Research";
+            }
+        });
+
+        function renderResults(data) {
+            // Định dạng markdown cơ bản xuống dòng -> <br>
+            const formatText = (txt) => {
+                if(!txt) return "";
+                return txt.replace(/\\n/g, '<br>').replace(/\\*\\*(.*?)\\*\\*/g, '<b>$1</b>');
+            };
+
+            resultsContainer.innerHTML = `
+                <div class="card" style="animation-delay: 0.1s">
+                    <div class="card-header">🔍 Dữ liệu thu thập (Mock)</div>
+                    <div class="card-content">
+                        ${data.sources.map(s => \`<p><b>\${s.title}</b>: \${s.snippet}</p>\`).join('')}
+                    </div>
+                </div>
+
+                <div class="card" style="animation-delay: 0.2s">
+                    <div class="card-header">📝 Tóm tắt của Researcher</div>
+                    <div class="card-content">
+                        \${formatText(data.research_notes)}
+                    </div>
+                </div>
+
+                <div class="card" style="animation-delay: 0.3s">
+                    <div class="card-header">🧠 Phân tích của Analyst</div>
+                    <div class="card-content">
+                        \${formatText(data.analysis_notes)}
+                    </div>
+                </div>
+
+                <div class="card final-answer" style="animation-delay: 0.4s">
+                    <div class="card-header">✨ Báo cáo cuối cùng (Writer)</div>
+                    <div class="card-content">
+                        \${formatText(data.final_answer)}
+                    </div>
+                    <div class="stats">
+                        <span>⏱ Latency: \${data.latency.toFixed(2)}s</span>
+                        <span>💸 Cost: $\${data.cost.toFixed(4)} USD (Đã tối ưu)</span>
+                    </div>
+                </div>
+            `;
+            resultsContainer.classList.add('visible');
+        }
+
+        function renderError(msg) {
+            resultsContainer.innerHTML = \`
+                <div class="card" style="border-color: #ef4444;">
+                    <div class="card-header" style="color: #ef4444;">❌ Lỗi</div>
+                    <div class="card-content">\${msg}</div>
+                </div>
+            \`;
+            resultsContainer.classList.add('visible');
+        }
+    </script>
+</body>
+</html>

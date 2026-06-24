@@ -26,16 +26,40 @@ def _init() -> None:
 def baseline(
     query: Annotated[str, typer.Option("--query", "-q", help="Research query")],
 ) -> None:
-    """Run a minimal single-agent baseline placeholder."""
+    """Run a single-agent baseline."""
 
     _init()
     request = ResearchQuery(query=query)
     state = ResearchState(request=request)
-    state.final_answer = (
-        "Baseline skeleton response. TODO(student): replace this with a real single-agent "
-        "implementation and record latency/cost/quality metrics."
+    
+    from multi_agent_research_lab.services.llm_client import LLMClient
+    from multi_agent_research_lab.services.search_client import SearchClient
+    import time
+
+    start_time = time.time()
+
+    # Simple single-agent flow
+    search_client = SearchClient()
+    sources = search_client.search(query=query, max_results=request.max_sources)
+    
+    sources_text = "\n".join(
+        [f"- [{i+1}] {s.title}: {s.snippet}" for i, s in enumerate(sources)]
     )
-    console.print(Panel.fit(state.final_answer, title="Single-Agent Baseline"))
+
+    llm = LLMClient()
+    system_prompt = "Write a short answer addressing the query using notes."
+    user_prompt = f"Q: {query}\nDocs:\n{sources_text}"
+
+    response = llm.complete(system_prompt, user_prompt)
+    latency = time.time() - start_time
+
+    state.final_answer = response.content
+    state.add_trace_event("baseline_complete", {"latency": latency, "cost_usd": response.cost_usd})
+    
+    console.print(Panel.fit(
+        f"Answer:\n{state.final_answer}\n\nLatency: {latency:.2f}s\nCost: ${response.cost_usd or 0:.4f}",
+        title="Single-Agent Baseline"
+    ))
 
 
 @app.command("multi-agent")
